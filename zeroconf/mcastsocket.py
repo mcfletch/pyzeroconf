@@ -57,6 +57,12 @@ To create a multicast socket:
 import socket,logging
 log = logging.getLogger( __name__ )
 
+if not hasattr( socket, 'IP_ADD_SOURCE_MEMBERSHIP' ):
+    socket.IP_UNBLOCK_SOURCE = 37
+    socket.IP_BLOCK_SOURCE = 38
+    socket.IP_ADD_SOURCE_MEMBERSHIP = 39
+    socket.IP_DROP_SOURCE_MEMBERSHIP = 40
+
 def create_socket( address, TTL=1, loop=True, reuse=True, family=socket.AF_INET ):
     """Create our multicast socket for mDNS usage
 
@@ -168,7 +174,7 @@ def allow_reuse( sock, reuse=True ):
         return True
     return False
 
-def join_group( sock, group, iface='' ):
+def join_group( sock, group, iface='', ssm=None ):
     """Add our socket to this multicast group"""
     log.info( 'Joining multicast group: %s', group )
     # group, local interface an ip_mreqn structure...
@@ -177,17 +183,32 @@ def join_group( sock, group, iface='' ):
     limit_to_interface( sock, iface )
     struct = socket.inet_pton(sock.family,group) + socket.inet_pton(sock.family,iface)
     if sock.family == socket.AF_INET6:
+        if ssm:
+            # TODO: IPv6 seems to use a totally different socket-level 
+            # control for this (using MLDv2)
+            log.warn("Don't yet support ipv6 ssm")
+#            struct += socket.inet_pton(sock.family, ssm )
+#            sock.setsockopt(
+#                socket.IPPROTO_IPV6, socket.IPV6_JOIN_GROUP,
+#                struct
+#            )
         sock.setsockopt(
             socket.IPPROTO_IPV6, socket.IPV6_JOIN_GROUP,
             struct
         )
     else:
-        struct = socket.inet_pton(sock.family,group) + socket.inet_pton(sock.family,iface)
-        sock.setsockopt(
-            socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP,
-            struct
-        )
-def leave_group( sock, group, iface='' ):
+        if ssm:
+            struct += socket.inet_pton(sock.family, ssm )
+            sock.setsockopt(
+                socket.IPPROTO_IP, socket.IP_ADD_SOURCE_MEMBERSHIP,
+                struct
+            )
+        else:
+            sock.setsockopt(
+                socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP,
+                struct
+            )
+def leave_group( sock, group, iface='', ssm=None ):
     """Remove our socket from this multicast group"""
     log.info( 'Leaving multicast group: %s', group )
     group = canonical( sock,group )
@@ -199,8 +220,15 @@ def leave_group( sock, group, iface='' ):
             struct
         )
     else:
-        sock.setsockopt(
-            socket.IPPROTO_IP, socket.IP_DROP_MEMBERSHIP,
-            struct,
-        )
+        if ssm:
+            struct += socket.inet_pton(sock.family,ssm)
+            sock.setsockopt(
+                socket.IPPROTO_IP, socket.IP_DROP_SOURCE_MEMBERSHIP,
+                struct,
+            )
+        else:
+            sock.setsockopt(
+                socket.IPPROTO_IP, socket.IP_DROP_MEMBERSHIP,
+                struct,
+            )
 

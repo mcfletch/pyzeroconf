@@ -21,6 +21,7 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 """
+"""0.12.4 update - attempt to support IGMPv3 Source-Specific-Multicast (SSM)"""
 """0.12.3 update - fix name matching being case-sensitive for certain queries"""
 
 """0.12.1 update - support for certain broken clients (e.g. aastra phones),
@@ -80,4 +81,4 @@
 
 __author__ = "Paul Scott-Murphy"
 __email__ = "paul at scott dash murphy dot com"
-__version__ = "0.12.3"
+__version__ = "0.12.4"
